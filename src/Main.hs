@@ -59,8 +59,9 @@ main = do
         Just grid -> do
             let len = length grid :: Int
             case len == 81 of
-                True -> do
-                    case checkGrid grid /= False of
-                        True -> putStrLn (showGrid (readGrid grid))
-                        False -> exitWith (ExitFailure 84)
+                True -> return ()
                 False -> exitWith (ExitFailure 84)
+            case checkGrid grid /= False of
+                True -> return ()
+                False -> exitWith (ExitFailure 84)
+            putStrLn (showGrid (readGrid grid))
