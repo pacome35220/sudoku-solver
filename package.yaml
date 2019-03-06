@@ -21,20 +21,26 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
-
-library:
-  source-dirs: src
+- containers
+- vector
+- parallel
+- deepseq
 
 executables:
   sudoku-solver-exe:
     main:                Main.hs
-    source-dirs:         app
+    source-dirs:         src
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -Wall
+    - -Werror
+    - -fwarn-tabs
+    - -fwarn-incomplete-uni-patterns
+    - -fwarn-incomplete-record-updates
     dependencies:
-    - sudoku-solver
+    - split
 
 tests:
   sudoku-solver-test:
@@ -49,5 +55,3 @@ tests:
     - -fwarn-tabs
     - -fwarn-incomplete-uni-patterns
     - -fwarn-incomplete-record-updates
-    dependencies:
-    - sudoku-solver
