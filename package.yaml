@@ -41,6 +41,7 @@ executables:
     - -fwarn-incomplete-record-updates
     dependencies:
     - split
+    - foldl
 
 tests:
   sudoku-solver-test:

@@ -4,7 +4,8 @@ import System.Environment
 import System.Exit
 
 import qualified Data.Char as Char
-import qualified Data.List.Split
+import qualified Data.List.Split as Split
+import qualified Data.List as List
 
 data Cell = Fixed Int | Possible [Int] deriving (Show, Eq)
 type Row  = [Cell]
@@ -30,7 +31,7 @@ checkGrid str = all readChar str
 -- fmap :: (a -> b) -> Maybe a -> Maybe b -- où f = Maybe
 
 readGrid :: String -> Grid
-readGrid str = fmap callbackRow (Data.List.Split.chunksOf 9 str)
+readGrid str = fmap callbackRow (Split.chunksOf 9 str)
     where
         callbackRow :: String -> Row
         callbackRow = fmap callbackCell
@@ -42,8 +43,22 @@ readGrid str = fmap callbackRow (Data.List.Split.chunksOf 9 str)
 showGrid :: Grid -> String
 showGrid grid = unlines ( map (\cells -> unwords (map showCell cells)) grid )
     where
+        showCell :: Cell -> [Char]
         showCell (Fixed x) = show x
         showCell _ = "."
+
+showGridWithPossibilities :: Grid -> String
+showGridWithPossibilities grid = unlines ( map (\cells -> unwords (map showCell cells)) grid)
+    where
+        showCell :: Cell -> String
+        showCell (Fixed x) = show x ++ "          "
+        showCell (Possible intTab) =
+            "[" ++ List.foldl (\acc cell -> acc ++ findUnique cell) "" [1..9] ++ "]"
+            where
+                findUnique :: Int -> String
+                findUnique x = case x `elem` intTab of
+                    True -> show x
+                    False -> " "
 
 main :: IO ()
 main = do
@@ -60,4 +75,4 @@ main = do
             case checkGrid grid /= False of
                 True -> return ()
                 False -> exitWith (ExitFailure 84)
-            putStrLn (showGrid (readGrid grid))
+            putStrLn (showGridWithPossibilities (readGrid grid))
