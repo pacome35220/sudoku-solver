@@ -40,14 +40,10 @@ readGrid str = fmap callbackRow (Data.List.Split.chunksOf 9 str)
                 callbackCell n = Fixed (Char.digitToInt n)
 
 showGrid :: Grid -> String
-showGrid grid = unlines (fmap splitRow grid)
+showGrid grid = unlines ( map (\cells -> unwords (map showCell cells)) grid )
     where
-        splitRow :: Row -> String
-        splitRow row = unwords (fmap showCell row)
-            where
-                showCell :: Cell -> String
-                showCell (Fixed x) = show x
-                showCell _ = "."
+        showCell (Fixed x) = show x
+        showCell _ = "."
 
 main :: IO ()
 main = do
