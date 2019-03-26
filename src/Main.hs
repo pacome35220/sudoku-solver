@@ -40,12 +40,12 @@ readGrid str = fmap callbackRow (Split.chunksOf 9 str)
                 callbackCell '.' = Possible [1..9]
                 callbackCell n = Fixed (Char.digitToInt n)
 
-showGrid :: Grid -> String
-showGrid grid = unlines ( map (\cells -> unwords (map showCell cells)) grid )
-    where
-        showCell :: Cell -> [Char]
-        showCell (Fixed x) = show x
-        showCell _ = "."
+-- showGrid :: Grid -> String
+-- showGrid grid = unlines ( map (\cells -> unwords (map showCell cells)) grid )
+--     where
+--         showCell :: Cell -> String
+--         showCell (Fixed x) = show x
+--         showCell _ = "."
 
 showGridWithPossibilities :: Grid -> String
 showGridWithPossibilities grid = unlines ( map (\cells -> unwords (map showCell cells)) grid)
@@ -59,6 +59,17 @@ showGridWithPossibilities grid = unlines ( map (\cells -> unwords (map showCell 
                 findUnique x = case x `elem` intTab of
                     True -> show x
                     False -> " "
+
+pruneCells :: Row -> Maybe Row
+pruneCells cells = traverse pruneCell cells
+    where
+        fixeds = [x | Fixed x <- cells]
+        pruneCell :: Cell -> Maybe Cell
+        pruneCell (Possible xs) = case xs List.\\ fixeds of
+            []  -> Nothing
+            [y] -> Just (Fixed y)
+            ys  -> Just (Possible ys)
+        pruneCell x = Just x
 
 main :: IO ()
 main = do
@@ -75,4 +86,7 @@ main = do
             case checkGrid grid /= False of
                 True -> return ()
                 False -> exitWith (ExitFailure 84)
-            putStrLn (showGridWithPossibilities (readGrid grid))
+            let mbPrunedGrid = traverse pruneCells (readGrid grid) :: Maybe Grid
+            case mbPrunedGrid of
+                Nothing -> exitWith (ExitFailure 84)
+                Just prunedGrid -> putStrLn (showGridWithPossibilities prunedGrid)
