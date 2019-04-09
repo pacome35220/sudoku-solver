@@ -60,10 +60,10 @@ showGridWithPossibilities grid = unlines ( map (\cells -> unwords (map showCell 
                     True -> show x
                     False -> " "
 
-pruneCells :: Row -> Maybe Row
-pruneCells cells = traverse pruneCell cells
+pruneRow :: Row -> Maybe Row
+pruneRow row = traverse pruneCell row
     where
-        fixeds = [x | Fixed x <- cells]
+        fixeds = [x | Fixed x <- row]
         pruneCell :: Cell -> Maybe Cell
         pruneCell (Possible xs) = case xs List.\\ fixeds of
             []  -> Nothing
@@ -86,7 +86,7 @@ main = do
             case checkGrid grid /= False of
                 True -> return ()
                 False -> exitWith (ExitFailure 84)
-            let mbPrunedGrid = traverse pruneCells (readGrid grid) :: Maybe Grid
+            let mbPrunedGrid = traverse pruneRow (readGrid grid) :: Maybe Grid
             case mbPrunedGrid of
                 Nothing -> exitWith (ExitFailure 84)
                 Just prunedGrid -> putStrLn (showGridWithPossibilities prunedGrid)
