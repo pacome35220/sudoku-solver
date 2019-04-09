@@ -87,7 +87,8 @@ main = do
                 True -> return ()
                 False -> exitWith (ExitFailure 84)
             -- let mbPrunedGrid = traverse pruneRow (readGrid grid) :: Maybe Grid
-            let mbPrunedGrid = fmap List.transpose . traverse pruneRow . List.transpose $ readGrid grid
+            let pruner = fmap List.transpose . traverse pruneRow . List.transpose
+            let mbPrunedGrid = pruner (readGrid grid)
             case mbPrunedGrid of
                 Nothing -> exitWith (ExitFailure 84)
                 Just prunedGrid -> do
