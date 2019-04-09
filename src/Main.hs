@@ -71,6 +71,13 @@ pruneRow row = traverse pruneCell row
             ys  -> Just (Possible ys)
         pruneCell x = Just x
 
+subGridsToRows :: Grid -> Grid
+subGridsToRows =
+    concatMap (\rows -> let [r1, r2, r3] = map (Split.chunksOf 3) rows
+    in zipWith3 (\a b c -> a ++ b ++ c) r1 r2 r3)
+    -- [] -> return ()
+    . Split.chunksOf 3
+
 main :: IO ()
 main = do
     args <- getArgs
@@ -86,11 +93,15 @@ main = do
             case checkGrid grid /= False of
                 True -> return ()
                 False -> exitWith (ExitFailure 84)
-            -- let mbPrunedGrid = traverse pruneRow (readGrid grid) :: Maybe Grid
             let pruner = fmap List.transpose . traverse pruneRow . List.transpose
             let mbPrunedGrid = pruner (readGrid grid)
             case mbPrunedGrid of
                 Nothing -> exitWith (ExitFailure 84)
                 Just prunedGrid -> do
                     putStrLn (showGrid prunedGrid)
-                    putStrLn (showGridWithPossibilities prunedGrid)
+                    let fullPruner = fmap subGridsToRows . traverse pruneRow . subGridsToRows
+                    let mbFullPrunedGrid = fullPruner prunedGrid
+                    case mbFullPrunedGrid of
+                        Nothing -> exitWith (ExitFailure 84)
+                        Just fullPrunedGrid -> do
+                            putStrLn (showGridWithPossibilities fullPrunedGrid)
