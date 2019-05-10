@@ -37,7 +37,7 @@ executables:
     - -Wall
     - -Werror
     - -fwarn-tabs
-    - -fwarn-incomplete-uni-patterns
+    # - -fwarn-incomplete-uni-patterns
     - -fwarn-incomplete-record-updates
     dependencies:
     - split

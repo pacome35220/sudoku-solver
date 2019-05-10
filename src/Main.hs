@@ -3,105 +3,141 @@ module Main where
 import System.Environment
 import System.Exit
 
-import qualified Data.Char as Char
-import qualified Data.List.Split as Split
-import qualified Data.List as List
+import Data.List
 
-data Cell = Fixed Int | Possible [Int] deriving (Show, Eq)
-type Row  = [Cell]
-type Grid = [Row]
+type Grid             = Matrix Value
 
-parseArgument :: [String] -> Maybe String
-parseArgument ["--grid", grid] = Just grid
-parseArgument ["-g", grid] = Just grid
-parseArgument _ = Nothing
+type Matrix a         = [Row a]
 
-readChar :: Char -> Bool
-readChar '.' = True
-readChar c
-    | c `elem` ['1'..'9'] = True
-    | otherwise = False
+type Row a            = [a]
 
-checkGrid :: String -> Bool
-checkGrid "" = False
-checkGrid str = all readChar str
+type Value            = Char
 
--- fmap :: Functor f => (a -> b) -> f a -> f b
--- fmap :: (a -> b) -> [a] -> [b] -- où f = []
--- fmap :: (a -> b) -> Maybe a -> Maybe b -- où f = Maybe
+boxsize               :: Int
+boxsize               =  3
 
-readGrid :: String -> Grid
-readGrid str = fmap callbackRow (Split.chunksOf 9 str)
-    where
-        callbackRow :: String -> Row
-        callbackRow = fmap callbackCell
-            where
-                callbackCell :: Char -> Cell
-                callbackCell '.' = Possible [1..9]
-                callbackCell n = Fixed (Char.digitToInt n)
+values                :: [Value]
+values                =  ['1'..'9']
 
-showGrid :: Grid -> String
-showGrid grid = unlines ( map (\cells -> unwords (map showCell cells)) grid )
-    where
-        showCell :: Cell -> String
-        showCell (Fixed x) = show x
-        showCell _ = "."
+empty                 :: Value -> Bool
+empty                 =  (== '.')
 
-showGridWithPossibilities :: Grid -> String
-showGridWithPossibilities grid = unlines ( map (\cells -> unwords (map showCell cells)) grid)
-    where
-        showCell :: Cell -> String
-        showCell (Fixed x) = show x ++ "          "
-        showCell (Possible intTab) =
-            "[" ++ List.foldl (\acc cell -> acc ++ findUnique cell) "" [1..9] ++ "]"
-            where
-                findUnique :: Int -> String
-                findUnique x = case x `elem` intTab of
-                    True -> show x
-                    False -> " "
+single                :: [a] -> Bool
+single [_]            =  True
+single _              =  False
 
-pruneRow :: Row -> Maybe Row
-pruneRow row = traverse pruneCell row
-    where
-        fixeds = [x | Fixed x <- row]
-        pruneCell :: Cell -> Maybe Cell
-        pruneCell (Possible xs) = case xs List.\\ fixeds of
-            []  -> Nothing
-            [y] -> Just (Fixed y)
-            ys  -> Just (Possible ys)
-        pruneCell x = Just x
+rows                  :: Matrix a -> [Row a]
+rows                  =  id
 
-subGridsToRows :: Grid -> Grid
-subGridsToRows =
-    concatMap (\rows -> let [r1, r2, r3] = map (Split.chunksOf 3) rows
-    in zipWith3 (\a b c -> a ++ b ++ c) r1 r2 r3)
-    -- [] -> return ()
-    . Split.chunksOf 3
+cols                  :: Matrix a -> [Row a]
+cols                  =  transpose
 
-main :: IO ()
-main = do
-    args <- getArgs
-    -- print args
-    let mbGrid = parseArgument args
-    case mbGrid of
-        Nothing -> exitWith (ExitFailure 84)
-        Just grid -> do
-            let len = length grid :: Int
-            case len == 81 of
-                True -> return ()
-                False -> exitWith (ExitFailure 84)
-            case checkGrid grid /= False of
-                True -> return ()
-                False -> exitWith (ExitFailure 84)
-            let pruner = fmap List.transpose . traverse pruneRow . List.transpose
-            let mbPrunedGrid = pruner (readGrid grid)
-            case mbPrunedGrid of
-                Nothing -> exitWith (ExitFailure 84)
-                Just prunedGrid -> do
-                    putStrLn (showGrid prunedGrid)
-                    let fullPruner = fmap subGridsToRows . traverse pruneRow . subGridsToRows
-                    let mbFullPrunedGrid = fullPruner prunedGrid
-                    case mbFullPrunedGrid of
+boxs                  :: Matrix a -> [Row a]
+boxs                  =  unpack . map cols . pack
+                         where
+                            pack   = split . map split
+                            split  = chop boxsize
+                            unpack = map concat . concat
+
+chop                  :: Int -> [a] -> [[a]]
+chop _ []             =  []
+chop n xs             =  take n xs : chop n (drop n xs)
+
+valid                 :: Grid -> Bool
+valid g               =  all nodups (rows g) &&
+                         all nodups (cols g) &&
+                         all nodups (boxs g)
+
+nodups                :: Eq a => [a] -> Bool
+nodups []             =  True
+nodups (x:xs)         =  not (elem x xs) && nodups xs
+
+type Choices          =  [Value]
+
+choices               :: Grid -> Matrix Choices
+choices               =  map (map choice)
+                         where
+                            choice v = if empty v then values else [v]
+
+cp                    :: [[a]] -> [[a]]
+cp []                 =  [[]]
+cp (xs:xss)           =  [y:ys | y <- xs, ys <- cp xss]
+
+collapse              :: Matrix [a] -> [Matrix a]
+collapse              =  cp . map cp
+
+solve                 :: Grid -> [Grid]
+solve                 =  filter valid . collapse . choices
+
+prune                 :: Matrix Choices -> Matrix Choices
+prune                 =  pruneBy boxs . pruneBy cols . pruneBy rows
+                         where pruneBy f = f . map reduce . f
+
+reduce                :: Row Choices -> Row Choices
+reduce xss            =  [xs `minus` singles | xs <- xss]
+                         where singles = concat (filter single xss)
+
+minus                 :: Choices -> Choices -> Choices
+xs `minus` ys         =  if single xs then xs else xs \\ ys
+
+solve2                :: Grid -> [Grid]
+solve2                =  filter valid . collapse . prune . choices
+
+solve3                :: Grid -> [Grid]
+solve3                =  filter valid . collapse . fix prune . choices
+
+fix                   :: Eq a => (a -> a) -> a -> a
+fix f x               =  if x == x' then x else fix f x'
+                         where x' = f x
+
+complete              :: Matrix Choices -> Bool
+complete              =  all (all single)
+
+void                  :: Matrix Choices -> Bool
+void                  =  any (any null)
+
+safe                  :: Matrix Choices -> Bool
+safe cm               =  all consistent (rows cm) &&
+                         all consistent (cols cm) &&
+                         all consistent (boxs cm)
+
+consistent            :: Row Choices -> Bool
+consistent            =  nodups . concat . filter single
+
+blocked               :: Matrix Choices -> Bool
+blocked m             =  void m || not (safe m)
+
+solve4                :: Grid -> [Grid]
+solve4                = search . prune . choices
+
+search                :: Matrix Choices -> [Grid]
+search m
+ | blocked m          =  []
+ | complete m         =  collapse m
+ | otherwise          =  [g | m' <- expand m
+                            , g  <- search (prune m')]
+
+expand                :: Matrix Choices -> [Matrix Choices]
+expand m              =
+      [rows1 ++ [row1 ++ [c] : row2] ++ rows2 | c <- cs]
+      where
+         (rows1,row:rows2) = break (any (not . single)) m
+         (row1,cs:row2)    = break (not . single) row
+
+toPrintable           :: [Grid] -> String
+toPrintable            =  unlines . head
+
+parseArgument         :: [String] -> Maybe String
+parseArgument         ["--file", file] = Just file
+parseArgument         ["-f", file] = Just file
+parseArgument         _ = Nothing
+
+main                  :: IO ()
+main                  =  do
+                     args <- getArgs
+                     let mbFile = parseArgument args
+                     case mbFile of
                         Nothing -> exitWith (ExitFailure 84)
-                        Just fullPrunedGrid -> do
-                            putStrLn (showGridWithPossibilities fullPrunedGrid)
+                        Just file -> do
+                           string <- readFile file
+                           putStr (toPrintable (solve4 (lines string)))
