@@ -66,9 +66,6 @@ cp (xs:xss)           =  [y:ys | y <- xs, ys <- cp xss]
 collapse              :: Matrix [a] -> [Matrix a]
 collapse              =  cp . map cp
 
-solve                 :: Grid -> [Grid]
-solve                 =  filter valid . collapse . choices
-
 prune                 :: Matrix Choices -> Matrix Choices
 prune                 =  pruneBy boxs . pruneBy cols . pruneBy rows
                          where pruneBy f = f . map reduce . f
@@ -79,12 +76,6 @@ reduce xss            =  [xs `minus` singles | xs <- xss]
 
 minus                 :: Choices -> Choices -> Choices
 xs `minus` ys         =  if single xs then xs else xs \\ ys
-
-solve2                :: Grid -> [Grid]
-solve2                =  filter valid . collapse . prune . choices
-
-solve3                :: Grid -> [Grid]
-solve3                =  filter valid . collapse . fix prune . choices
 
 fix                   :: Eq a => (a -> a) -> a -> a
 fix f x               =  if x == x' then x else fix f x'
@@ -107,8 +98,8 @@ consistent            =  nodups . concat . filter single
 blocked               :: Matrix Choices -> Bool
 blocked m             =  void m || not (safe m)
 
-solve4                :: Grid -> [Grid]
-solve4                = search . prune . choices
+solve                :: Grid -> [Grid]
+solve                = search . prune . choices
 
 search                :: Matrix Choices -> [Grid]
 search m
@@ -125,7 +116,7 @@ expand m              =
          (row1,cs:row2)    = break (not . single) row
 
 toPrintable           :: [Grid] -> String
-toPrintable            =  unlines . head
+toPrintable           =  unlines . head
 
 parseArgument         :: [String] -> Maybe String
 parseArgument         ["--file", file] = Just file
@@ -140,4 +131,4 @@ main                  =  do
                         Nothing -> exitWith (ExitFailure 84)
                         Just file -> do
                            string <- readFile file
-                           putStr (toPrintable (solve4 (lines string)))
+                           putStr (toPrintable (solve (lines string)))
