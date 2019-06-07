@@ -128,7 +128,7 @@ main                  =  do
                      args <- getArgs
                      let mbFile = parseArgument args
                      case mbFile of
-                        Nothing -> exitWith (ExitFailure 84)
+                        Nothing -> exitFailure
                         Just file -> do
                            string <- readFile file
                            putStr (toPrintable (solve (lines string)))
